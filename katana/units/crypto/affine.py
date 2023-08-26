@@ -114,14 +114,12 @@ class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
                 if gcd(affine_a, len(affine_alphabet)):
                     yield (affine_a % len(affine_alphabet), b)
 
-        elif affine_b != -1 and affine_a == -1:
+        elif affine_a == -1:
             for a in range(len(affine_alphabet)):
                 if gcd(a, len(affine_alphabet)):
                     yield (a, affine_b % len(affine_alphabet))
-        else:
-            if affine_a != -1 and affine_b != -1:
-                if gcd(affine_a, len(affine_alphabet)):
-                    yield affine_a, affine_b
+        elif gcd(affine_a, len(affine_alphabet)):
+            yield affine_a, affine_b
 
     def evaluate(self, case: Any) -> None:
         """
@@ -139,18 +137,14 @@ class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
 
         alphabet: bytes = bytes(self.get("alphabet", ascii_uppercase), "utf-8")
 
-        # Use an empty list to keep track of the new decrypted string
-        result: list = []
-
         # Perform the affine cipher operation to decrypt
         new_b: int = abs(b - len(alphabet))
         new_a: int = inverse(a, len(alphabet))
         new_b: int = (new_a * new_b) % len(alphabet)
 
-        for letter in self.target.raw:
-            # Attempt to inverse the affine cipher
-            result.append(affine(letter, new_a, new_b, alphabet))
-
+        result: list = [
+            affine(letter, new_a, new_b, alphabet) for letter in self.target.raw
+        ]
         # Put it back together
         result: bytes = bytes(result)
 

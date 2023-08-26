@@ -102,11 +102,8 @@ def decryptFence(cipher, rails, offset=0):
         x = rail
         while x < length and i < length:
             fence[rail][x] = cipher[i]
-            if p:
-                x += 2 * (rails - rail - 1)
-            else:
-                x += 2 * rail
-            if (rail != 0) and (rail != (rails - 1)):
+            x += 2 * (rails - rail - 1) if p else 2 * rail
+            if rail not in [0, rails - 1]:
                 p = not p
             i += 1
 
@@ -154,16 +151,8 @@ class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
     def enumerate(self):
 
         # If they do not supply any offset, bruteforce it
-        if self.offset is None:
-            offsets = range(0, 10)
-        else:
-            offsets = [self.offset]
-
-        if self.rails is None:
-            rails = range(2, 10)
-        else:
-            rails = [self.rails]
-
+        offsets = range(0, 10) if self.offset is None else [self.offset]
+        rails = range(2, 10) if self.rails is None else [self.rails]
         # Now permutate through all of these and run them!
         for offset in offsets:
             for rail in rails:

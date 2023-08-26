@@ -58,10 +58,7 @@ def convergents_from_contfrac(frac: list) -> list:
     :return: A list of convergents
     """
 
-    convs = []
-    for i in range(len(frac)):
-        convs.append(contfrac_to_rational(frac[0:i]))
-    return convs
+    return [contfrac_to_rational(frac[:i]) for i in range(len(frac))]
 
 
 def contfrac_to_rational(frac: list):
@@ -71,7 +68,7 @@ def contfrac_to_rational(frac: list):
     Converts a finite continued fraction ``[a0, ..., an]`` to an x/y rational.
     """
 
-    if len(frac) == 0:
+    if not frac:
         return 0, 1
     num = frac[-1]
     denom = 1
@@ -212,10 +209,7 @@ def find_variables(text):
 
         pubkey = crypto.load_publickey(crypto.FILETYPE_PEM, pubkey)
         rsakey = pubkey.to_cryptography_key().public_numbers()
-        values = (["n", rsakey.n], ["e", rsakey.e])
-        for letter, value in values:
-            yield letter, value
-
+        yield from (["n", rsakey.n], ["e", rsakey.e])
         return  # We can assume we won't find any other variables....
 
     matches = [
@@ -233,11 +227,11 @@ def find_variables(text):
         "totient",
     ]
     for m in matches:
-        match = re.search(
-            r"({0})({1})?\)?\s*[=:]\s*(.*)".format(m[0], m[1:]), text, re.IGNORECASE
-        )
-
-        if match:
+        if match := re.search(
+            r"({0})({1})?\)?\s*[=:]\s*(.*)".format(m[0], m[1:]),
+            text,
+            re.IGNORECASE,
+        ):
             letter = match.groups()[0].lower()
             middle = match.groups()[1]
             value = match.groups()[-1]
@@ -375,31 +369,32 @@ class Unit(NotEnglishUnit):
 
         def factor_n():
             # if n is given but p and q are not, try TO factor n.
-            if self.p == -1 and self.q == -1 and self.n != -1:
-                factors = list([int(x) for x in primefac.factorint(self.n)])
-                if len(factors) == 2:
-                    self.p, self.q = factors
-                elif len(factors) == 1:
-                    raise NotImplemented("factordb could not factor this!")
-                else:
-                    # This is the case for Multi-factor RSA!
-                    # raise NotImplemented("We need support for multifactor RSA!")
+            if self.p != -1 or self.q != -1 or self.n == -1:
+                return
+            factors = [int(x) for x in primefac.factorint(self.n)]
+            if len(factors) == 2:
+                self.p, self.q = factors
+            elif len(factors) == 1:
+                raise NotImplemented("factordb could not factor this!")
+            else:
+                # This is the case for Multi-factor RSA!
+                # raise NotImplemented("We need support for multifactor RSA!")
 
-                    # Multiply all factors together to get phi
+                # Multiply all factors together to get phi
 
-                    self.phi = reduce(mul, [factor - 1 for factor in factors], 1)
+                self.phi = reduce(mul, [factor - 1 for factor in factors], 1)
 
-                    # Calulate the new d private key
-                    self.d = inverse(self.e, self.phi)
+                # Calulate the new d private key
+                self.d = inverse(self.e, self.phi)
 
-                    # Now calculate the plaintext
-                    self.m = pow(self.c, self.d, self.n)
+                # Now calculate the plaintext
+                self.m = pow(self.c, self.d, self.n)
 
-                    # Grab the result and give it to Katana
-                    print(self.m)
-                    result = long_to_bytes(self.m).decode()
-                    self.manager.register_data(self, result)
-                    return
+                # Grab the result and give it to Katana
+                print(self.m)
+                result = long_to_bytes(self.m).decode()
+                self.manager.register_data(self, result)
+                return
 
         # If we have d, c, and n, just decrypt!
         if self.d != -1 and self.c != -1 and self.n != -1:

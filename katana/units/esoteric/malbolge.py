@@ -42,7 +42,7 @@ def word(ys):
     for i, y in enumerate(ys):
         assert 0 <= y < 3
         x = x * 3 + y
-    assert i + 1 == 10
+    assert i == 9
     return x
 
 
@@ -69,11 +69,14 @@ def crz(xs, ys):
     return word(map(lambda x, y: table[y][x], unword(xs), unword(ys)))
 
 
-xlat1 = '+b(29e*j1VMEKLyC})8&m#~W>qxdRp0wkrUo[D7,XTcA"lI.v%{gJh4G\\-=O@5`'
-xlat1 += "_3i<?Z';FNQuY]szf$!BS/|t:Pn6^Ha"
-xlat2 = "5z]&gqtyfr$(we4{WP)H-Zn,[%\\3dL+Q;>U!pJS72FhOA1CB6v^=I_0/8|jsb9m<.T"
-xlat2 += "Vac`uY*MK'X~xDl}REokN:#?G\"i@"
-
+xlat1 = (
+    '+b(29e*j1VMEKLyC})8&m#~W>qxdRp0wkrUo[D7,XTcA"lI.v%{gJh4G\\-=O@5`'
+    + "_3i<?Z';FNQuY]szf$!BS/|t:Pn6^Ha"
+)
+xlat2 = (
+    "5z]&gqtyfr$(we4{WP)H-Zn,[%\\3dL+Q;>U!pJS72FhOA1CB6v^=I_0/8|jsb9m<.T"
+    + "Vac`uY*MK'X~xDl}REokN:#?G\"i@"
+)
 assert len(xlat1) == len(xlat2) == 94
 
 
@@ -141,11 +144,7 @@ def execute_step(a, c, d, mem, inf=sys.stdin.buffer, outf=sys.stdout.buffer):
         # outf.write(bytes([ a % 256 ]))
         output.append(chr(a % 256))
     elif m == "/":
-        if not inf:
-            x = "\n"
-        else:
-            x = inf.read(1)
-
+        x = "\n" if not inf else inf.read(1)
         if x:
             (a,) = x
         else:
@@ -171,7 +170,6 @@ def execute(code, inf=sys.stdin.buffer, allow_not_isprint=False, debug=False):
     except:
         # If this fails, it is probably not Malbolge. Stop trying.
         return None
-        pass
     a, c, d = 0, 0, 0
     while True:
         try:

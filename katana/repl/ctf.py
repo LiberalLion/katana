@@ -156,13 +156,8 @@ def get_provider(provider: str, url: str, username: str, password: str) -> CTFPr
 
     # Split provider from api version
     provider = provider.split("-")
-    if len(provider) == 1:
-        provider = provider[0]
-        api_version = None
-    else:
-        api_version = "-".join(provider[1:])
-        provider = provider[0]
-
+    api_version = None if len(provider) == 1 else "-".join(provider[1:])
+    provider = provider[0]
     if provider not in known_providers:
         raise ValueError(f"{provider}: not in known providers: {repr(known_providers)}")
 

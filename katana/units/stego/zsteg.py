@@ -81,8 +81,7 @@ class Unit(FileUnit):
         :return: Generator of ``zsteg`` arguments
         """
 
-        for args in permutations:
-            yield args
+        yield from permutations
 
     def evaluate(self, case: Any) -> None:
         """

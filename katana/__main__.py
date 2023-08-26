@@ -90,7 +90,7 @@ def main():
     # Add options for all the unit specific configurations
     for unit in manager.finder.units:
         parser.add_argument(
-            "--" + unit.get_name(),
+            f"--{unit.get_name()}",
             default=None,
             help="comma separated unit configuration",
         )
@@ -133,11 +133,7 @@ def main():
         manager["manager"]["force"] = "yes"
 
     # Determine whether to display images or not
-    if args.imagegui:
-        manager["manager"]["imagegui"] = "yes"
-    else:
-        manager["manager"]["imagegui"] = "no"
-
+    manager["manager"]["imagegui"] = "yes" if args.imagegui else "no"
     # Apply unit configurations
     args_dict = vars(args)  # We need this because configs have '.'
     for unit in manager.finder.units:

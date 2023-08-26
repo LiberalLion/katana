@@ -58,8 +58,7 @@ class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
         """
 
         if self.geti("shift", None) is None:
-            for shift in range(1, 255):
-                yield shift
+            yield from range(1, 255)
         else:
             yield self.geti("shift")
 

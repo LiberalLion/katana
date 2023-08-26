@@ -59,9 +59,7 @@ class Unit(FileUnit):
             stderr=subprocess.PIPE,
         )
 
-        # Look for flags, if we found them...
-        response = katana.util.process_output(p)
-        if response:
+        if response := katana.util.process_output(p):
             if "stdout" in response:
                 for line in response["stdout"]:
                     delimited = line.split(":")

@@ -60,9 +60,7 @@ class Unit(FileUnit):
         yield ""
 
         # Check other passwords specified explicitly
-        for p in self.get("passwords", "").split(","):
-            yield p
-
+        yield from self.get("passwords", "").split(",")
         # Add all the passwords from the dictionary file
         if self.get("dict") is not None:
             with open(self.get("dict"), "wb") as fh:

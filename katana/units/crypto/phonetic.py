@@ -83,10 +83,6 @@ class Unit(RegexUnit):
         :return: None
         """
 
-        # Decode the data
-        result = []
-        for word in match.group().split(b" "):
-            result.append(word[0])
-
+        result = [word[0] for word in match.group().split(b" ")]
         # Register data
         self.manager.register_data(self, bytes(result))

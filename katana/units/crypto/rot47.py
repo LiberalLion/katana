@@ -61,7 +61,7 @@ class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
             if 33 <= j <= 126:
                 x.append(33 + ((j + 14) % 94))
             else:
-                x.append(s[i])
+                x.append(j)
         return b"".join([chr(z).encode("latin-1") for z in x])
 
     def evaluate(self, case: Any) -> None:

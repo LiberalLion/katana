@@ -112,9 +112,7 @@ class Unit(WebUnit):
         # All this does is find is new links.
         # It won't contain flags and they don't need to be considered results.
         for link in links:
-            new_link = "{0}/{1}".format(last_location, link.decode("utf-8").lstrip("/"))
-
-            # If we found a new link, add as as a result, recurse on it, and
-            # hunt for flags
-            if new_link:
+            if new_link := "{0}/{1}".format(
+                last_location, link.decode("utf-8").lstrip("/")
+            ):
                 self.manager.register_data(self, new_link)

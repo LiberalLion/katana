@@ -47,7 +47,7 @@ class Provider(CTFProvider):
         # Get user profile
         r = self.session.get(f"{self.url}/api/v1/users/me")
         if r.status_code != 200:
-            raise RuntimeError(f"failed to retrieve profile")
+            raise RuntimeError("failed to retrieve profile")
 
         data = r.json()["data"]
         self.me = User(
@@ -73,7 +73,7 @@ class Provider(CTFProvider):
         # Request the list of challenges
         r = self.session.get(f"{self.url}/api/v1/challenges")
         if r.status_code != 200:
-            raise RuntimeError(f"failed to retrieve challenges")
+            raise RuntimeError("failed to retrieve challenges")
 
         # Extract json data
         data = r.json()["data"]
@@ -133,20 +133,17 @@ class Provider(CTFProvider):
 
         # Extract solve data
         data = r.json()["data"]
-        solves = []
-        for solve in data:
-            solves.append(
-                Challenge(
-                    title=solve["challenge"]["name"],
-                    value=solve["challenge"]["value"],
-                    ident=str(solve["challenge_id"]),
-                    provider=self,
-                    tags=[solve["challenge"]["category"]],
-                    solved=True,
-                )
+        return [
+            Challenge(
+                title=solve["challenge"]["name"],
+                value=solve["challenge"]["value"],
+                ident=str(solve["challenge_id"]),
+                provider=self,
+                tags=[solve["challenge"]["category"]],
+                solved=True,
             )
-
-        return solves
+            for solve in data
+        ]
 
     def scoreboard(
         self, localize: User = None, count=10, bracket: Bracket = None
@@ -182,9 +179,7 @@ class Provider(CTFProvider):
         if end >= len(data):
             start -= end - len(data)
             end = len(data)
-        if start < 0:
-            start = 0
-
+        start = max(start, 0)
         return {
             (pos + start + 1): User(
                 name=u["name"],
@@ -238,8 +233,7 @@ class Provider(CTFProvider):
 
         # Check if it was right
         data = r.json()["data"]
-        if data["status"] != "incorrect":
-            challenge.solved = True
-            return True, 1
-        else:
+        if data["status"] == "incorrect":
             return False, 1
+        challenge.solved = True
+        return True, 1

@@ -28,7 +28,7 @@ def decode_from_whitespace(binary_sequence: str) -> str:
     try:
         decoded = binascii.unhexlify(decoded)
     except binascii.Error:
-        decoded = binascii.unhexlify("0" + decoded)
+        decoded = binascii.unhexlify(f"0{decoded}")
     except UnicodeDecodeError:
         return None
 
@@ -87,8 +87,7 @@ class Unit(FileUnit):
         # Decode the first method, and recurse/add_results on those...
         final_binary = b"".join(pieces)
 
-        decoded = decode_from_whitespace(final_binary)
-        if decoded:
+        if decoded := decode_from_whitespace(final_binary):
             self.manager.register_data(self, decoded)
 
         # Then try again, hotswapping the 1's and 0's.
@@ -96,6 +95,5 @@ class Unit(FileUnit):
         final_binary.replace(b"1", b"0")
         final_binary.replace(b"@", b"1")
 
-        decoded = decode_from_whitespace(final_binary)
-        if decoded:
+        if decoded := decode_from_whitespace(final_binary):
             self.manager.register_data(self, decoded)

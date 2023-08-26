@@ -105,11 +105,9 @@ class Unit(NotEnglishUnit):
         :return: None. This function should not return any data.
         """
 
-        output = evaluate_ook(
+        if output := evaluate_ook(
             self.code,
             self.get("input_file", default=None),
             self.geti("ook_timeout", default=1),
-        )
-
-        if output:
+        ):
             self.manager.register_data(self, output)

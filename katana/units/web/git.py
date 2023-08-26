@@ -102,16 +102,9 @@ def get_referenced_sha1(obj_file):
     if isinstance(obj_file, dulwich.objects.Commit):
         objs.append(obj_file.tree.decode())
 
-        for parent in obj_file.parents:
-            objs.append(parent.decode())
+        objs.extend(parent.decode() for parent in obj_file.parents)
     elif isinstance(obj_file, dulwich.objects.Tree):
-        for item in obj_file.iteritems():
-            objs.append(item.sha.decode())
-    elif isinstance(obj_file, dulwich.objects.Blob):
-        pass  # Ignore these.
-    else:
-        pass  # Ignore these.
-
+        objs.extend(item.sha.decode() for item in obj_file.iteritems())
     return objs
 
 
@@ -223,14 +216,7 @@ class DownloadWorker(Worker):
         self.session.mount(url, requests.adapters.HTTPAdapter(max_retries=retry))
 
     def do_task(self, filepath, url, directory, retry, timeout, unit, katana):
-        with closing(
-            self.session.get(
-                "%s/%s" % (url, filepath),
-                allow_redirects=False,
-                stream=True,
-                timeout=timeout,
-            )
-        ) as response:
+        with closing(self.session.get(f"{url}/{filepath}", allow_redirects=False, stream=True, timeout=timeout)) as response:
 
             if response.status_code != 200:
                 return []
@@ -254,21 +240,14 @@ class RecursiveDownloadWorker(DownloadWorker):
     """
 
     def do_task(self, filepath, url, directory, retry, timeout, unit, katana):
-        with closing(
-            self.session.get(
-                "%s/%s" % (url, filepath),
-                allow_redirects=False,
-                stream=True,
-                timeout=timeout,
-            )
-        ) as response:
+        with closing(self.session.get(f"{url}/{filepath}", allow_redirects=False, stream=True, timeout=timeout)) as response:
 
             if (
                 response.status_code in (301, 302)
                 and "Location" in response.headers
-                and response.headers["Location"].endswith(filepath + "/")
+                and response.headers["Location"].endswith(f"{filepath}/")
             ):
-                return [filepath + "/"]
+                return [f"{filepath}/"]
 
             if response.status_code != 200:
                 return []
@@ -298,7 +277,7 @@ class FindRefsWorker(DownloadWorker):
 
     def do_task(self, filepath, url, directory, retry, timeout, unit, katana):
         response = self.session.get(
-            "%s/%s" % (url, filepath), allow_redirects=False, timeout=timeout
+            f"{url}/{filepath}", allow_redirects=False, timeout=timeout
         )
 
         if response.status_code != 200:
@@ -317,9 +296,7 @@ class FindRefsWorker(DownloadWorker):
         for ref in re.findall(r"(refs(/[a-zA-Z0-9\-\.\_\*]+)+)", response.text):
             ref = ref[0]
             if not ref.endswith("*"):
-                tasks.append(".git/%s" % ref)
-                tasks.append(".git/logs/%s" % ref)
-
+                tasks.extend((f".git/{ref}", f".git/logs/{ref}"))
         return tasks
 
 
@@ -331,9 +308,9 @@ class FindObjectsWorker(DownloadWorker):
     """
 
     def do_task(self, obj, url, directory, retry, timeout, unit, katana):
-        filepath = ".git/objects/%s/%s" % (obj[:2], obj[2:])
+        filepath = f".git/objects/{obj[:2]}/{obj[2:]}"
         response = self.session.get(
-            "%s/%s" % (url, filepath), allow_redirects=False, timeout=timeout
+            f"{url}/{filepath}", allow_redirects=False, timeout=timeout
         )
         # Fetching %s/%s [%d]\n', url, filepath, response.status_code
 
@@ -360,8 +337,8 @@ def fetch_git(unit, url, directory, jobs, retry, timeout, katana):
     code.
     """
 
-    assert os.path.isdir(directory), "%s is not a directory" % directory
-    assert not os.listdir(directory), "%s is not empty" % directory
+    assert os.path.isdir(directory), f"{directory} is not a directory"
+    assert not os.listdir(directory), f"{directory} is not empty"
     assert jobs >= 1, "invalid number of jobs"
     assert retry >= 1, "invalid number of retries"
     assert timeout >= 1, "invalid timeout"
@@ -375,7 +352,9 @@ def fetch_git(unit, url, directory, jobs, retry, timeout, katana):
     url = url.rstrip("/")
 
     # check for /.git/HEAD
-    response = requests.get("%s/.git/HEAD" % url, verify=False, allow_redirects=False)
+    response = requests.get(
+        f"{url}/.git/HEAD", verify=False, allow_redirects=False
+    )
 
     if response.status_code != 200:
         # error: %s/.git/HEAD does not exist\n', url, file=sys.stderr
@@ -386,7 +365,7 @@ def fetch_git(unit, url, directory, jobs, retry, timeout, katana):
 
     # check for directory listing
     # Testing /.git/
-    response = requests.get("%s/.git/" % url, verify=False, allow_redirects=False)
+    response = requests.get(f"{url}/.git/", verify=False, allow_redirects=False)
 
     if (
         response.status_code == 200
@@ -466,9 +445,12 @@ def fetch_git(unit, url, directory, jobs, retry, timeout, katana):
             info_packs = f.read()
 
         for sha1 in re.findall(r"pack-([a-f0-9]{40})\.pack", info_packs):
-            tasks.append(".git/objects/pack/pack-%s.idx" % sha1)
-            tasks.append(".git/objects/pack/pack-%s.pack" % sha1)
-
+            tasks.extend(
+                (
+                    f".git/objects/pack/pack-{sha1}.idx",
+                    f".git/objects/pack/pack-{sha1}.pack",
+                )
+            )
     process_tasks(
         tasks, DownloadWorker, jobs, args=(url, directory, retry, timeout, unit, katana)
     )
@@ -485,12 +467,9 @@ def fetch_git(unit, url, directory, jobs, retry, timeout, katana):
         os.path.join(directory, ".git", "ORIG_HEAD"),
     ]
     for dirpath, _, filenames in os.walk(os.path.join(directory, ".git", "refs")):
-        for filename in filenames:
-            files.append(os.path.join(dirpath, filename))
+        files.extend(os.path.join(dirpath, filename) for filename in filenames)
     for dirpath, _, filenames in os.walk(os.path.join(directory, ".git", "logs")):
-        for filename in filenames:
-            files.append(os.path.join(dirpath, filename))
-
+        files.extend(os.path.join(dirpath, filename) for filename in filenames)
     for filepath in files:
         if not os.path.exists(filepath):
             continue
@@ -516,7 +495,7 @@ def fetch_git(unit, url, directory, jobs, retry, timeout, katana):
         for filename in os.listdir(pack_file_dir):
             if filename.startswith("pack-") and filename.endswith(".pack"):
                 pack_data_path = os.path.join(pack_file_dir, filename)
-                pack_idx_path = os.path.join(pack_file_dir, filename[:-5] + ".idx")
+                pack_idx_path = os.path.join(pack_file_dir, f"{filename[:-5]}.idx")
                 pack_data = dulwich.pack.PackData(pack_data_path)
                 pack_idx = dulwich.pack.load_pack_index(pack_idx_path)
                 pack = dulwich.pack.Pack.from_objects(pack_data, pack_idx)
@@ -617,8 +596,7 @@ class Unit(WebUnit):
                 (r"^http://(.*):(\d+)$", socks.PROXY_TYPE_HTTP),
                 (r"^(.*):(\d+)$", socks.PROXY_TYPE_SOCKS5),
             ]:
-                m = re.match(pattern, self.git_proxy)
-                if m:
+                if m := re.match(pattern, self.git_proxy):
                     socks.setdefaultproxy(proxy_type, m.group(1), int(m.group(2)))
                     socket.socket = socks.socksocket
                     proxy_valid = True
@@ -632,7 +610,7 @@ class Unit(WebUnit):
 
         try:
             r = requests.get(url, allow_redirects=False)
-        except (requests.exceptions.ConnectionError,):
+        except requests.exceptions.ConnectionError:
             raise NotApplicable("cannot reach server")
 
         # If the response is anything other than a "Not Found",
@@ -676,7 +654,7 @@ class Unit(WebUnit):
 
         # Do a basic grep for flags
         grep = subprocess.run(
-            "git grep -P {}".format(self.flag_format).split(),
+            f"git grep -P {self.flag_format}".split(),
             cwd=git_directory,
             stdout=subprocess.PIPE,
         )

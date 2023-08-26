@@ -54,7 +54,7 @@ def buildbracemap(code: bytes) -> dict:
     for position, command in enumerate(code):
         if command == b"[":
             temp_bracestack.append(position)
-        if command == b"]":
+        elif command == b"]":
             try:
                 start = temp_bracestack.pop()
                 bracemap[start] = position
@@ -96,18 +96,18 @@ def evaluate_brainfuck(code: bytes, input_file, timeout: int = 1):
     while codeptr < len(code) and time.time() < (start_time + timeout):
         command = code[codeptr]
 
-        if command == b">":
+        if command == b"<":
+            cellptr = 0 if cellptr <= 0 else cellptr - 1
+        elif command == b">":
             cellptr += 1
             if cellptr == len(cells):
                 cells.append(0)
 
-        if command == b"<":
-            cellptr = 0 if cellptr <= 0 else cellptr - 1
         try:
             if command == b"+":
                 cells[cellptr] = (cells[cellptr] + 1) % 256
 
-            if command == b"-":
+            elif command == b"-":
                 cells[cellptr] = (cells[cellptr] - 1) % 256
 
             if command == b"[" and cells[cellptr] == 0:
@@ -115,15 +115,10 @@ def evaluate_brainfuck(code: bytes, input_file, timeout: int = 1):
             if command == b"]" and cells[cellptr] != 0:
                 codeptr = bracemap[codeptr]
 
-            if command == b".":
-                output.append(chr(cells[cellptr]))
-
             if command == b",":
-                if not input_file:
-                    cells[cellptr] = 10
-
-                else:
-                    cells[cellptr] = input_file.read(1)
+                cells[cellptr] = 10 if not input_file else input_file.read(1)
+            elif command == b".":
+                output.append(chr(cells[cellptr]))
 
         except (KeyError, TypeError) as e:
             # traceback.print_exc()
@@ -160,11 +155,9 @@ class Unit(BaseUnit):
         :return: None. This function should not return any data.
         """
 
-        output = evaluate_brainfuck(
+        if output := evaluate_brainfuck(
             self.target.raw,
             self.get("input_file", default=None),
             self.geti("bf_timeout", default=1),
-        )
-
-        if output:
+        ):
             self.manager.register_data(self, output)

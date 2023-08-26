@@ -42,7 +42,7 @@ class Unit(BaseUnit):
         # Find matches in the target
         self.matches: list = MD5_PATTERN.findall(self.target.raw)
 
-        if self.matches is None or len(self.matches) == 0:
+        if self.matches is None or not self.matches:
             raise NotApplicable("No md5 hashes found")
 
     def enumerate(self) -> Generator[Any, None, None]:

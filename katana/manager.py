@@ -139,7 +139,7 @@ class Manager(configparser.ConfigParser):
         RE compilation). """
 
         # We only specially handle manager and DEFAULT sections
-        if section != "manager" and section != "DEFAULT":
+        if section not in ["manager", "DEFAULT"]:
             return super(Manager, self).set(section, option, value)
 
         # Flag Format needs to be compiled
@@ -269,17 +269,13 @@ class Manager(configparser.ConfigParser):
         the manager configuration """
 
         # Iterate over lists and tuples automatically
-        if isinstance(data, list) or isinstance(data, tuple):
-            found = 0
-            for item in data:
-                found += self.find_flag(unit, item)
+        if isinstance(data, (list, tuple)):
+            found = sum(self.find_flag(unit, item) for item in data)
             return found > 0
 
         # Iterate over dictionaries
         if isinstance(data, dict):
-            found = 0
-            for key, item in data.items():
-                found += self.find_flag(unit, item)
+            found = sum(self.find_flag(unit, item) for key, item in data.items())
             return found > 0
 
         # We deal with bytes here
@@ -292,13 +288,11 @@ class Manager(configparser.ConfigParser):
         if no_xml != data:
             self.find_flag(unit, no_xml)
 
-        # Search the data for flags
-        match = re.search(
+        if match := re.search(
             bytes(unit.target.config["manager"]["flag-format"], "utf-8"),
             data,
             re.DOTALL | re.MULTILINE | re.IGNORECASE,
-        )
-        if match:
+        ):
             # Flags should be printable
             try:
                 found = match.group().decode("utf-8")
@@ -327,8 +321,7 @@ class Manager(configparser.ConfigParser):
         config: configparser.ConfigParser = None,
     ) -> Target:
         """ Build a new target in the context of this manager """
-        t = Target(self, upstream, parent, config=config)
-        return t
+        return Target(self, upstream, parent, config=config)
 
     def validate(self) -> None:
         """ Validate the configuration given this manager, a target, and a set
@@ -352,7 +345,7 @@ class Manager(configparser.ConfigParser):
         """ Create a target, enumerate units, queue them, and return the target
         object """
 
-        if isinstance(upstream, list) or isinstance(upstream, tuple):
+        if isinstance(upstream, (list, tuple)):
             for item in upstream:
                 self.queue_target(item, parent=parent)
             return None
@@ -364,7 +357,7 @@ class Manager(configparser.ConfigParser):
             upstream = repr(upstream)
 
         # That's silly...
-        if upstream.strip() == b"" or upstream.strip() == "":
+        if upstream.strip() in [b"", ""]:
             return None
 
         # Don't recurse if the parent is already done
@@ -381,12 +374,8 @@ class Manager(configparser.ConfigParser):
                 return None
 
         # Scale linearly with our parent's priority
-        if scale is None and parent is not None:
-            scale = parent.PRIORITY / 100.0
-        elif scale is None:
-            # No scale defined, use 1.0
-            scale = 1.0
-
+        if scale is None:
+            scale = parent.PRIORITY / 100.0 if parent is not None else 1.0
         # Create the target object
         try:
             target = self.target(upstream, parent, config=config)
@@ -601,7 +590,7 @@ class Manager(configparser.ConfigParser):
         """ Send work items with high priority to signal closing down threads
         """
 
-        for thread in self.threads:
+        for _ in self.threads:
             self.work.put(
                 Manager.WorkItem(
                     -10000, "abort", None, None  # Priority  # Action  # Unit
@@ -661,7 +650,7 @@ class Manager(configparser.ConfigParser):
             # unit off the queue while this one is gone)
             with self.lock:
                 try:
-                    for i in range(10):
+                    for _ in range(10):
                         try:
                             case = next(work.generator)
                         except StopIteration:
@@ -709,16 +698,15 @@ class Manager(configparser.ConfigParser):
         This function will raise an exception if the chosen output directory
         already exists. """
 
-        if os.path.isdir(self["manager"]["outdir"]) and self["manager"].getboolean(
-            "force"
-        ):
-            shutil.rmtree(self["manager"]["outdir"])
-        elif os.path.isdir(self["manager"]["outdir"]):
-            rm_outdir = input("Do you want to delete prior results [y/N]: ")
-            if rm_outdir.lower() == "y" or rm_outdir.lower() == "yes":
+        if os.path.isdir(self["manager"]["outdir"]):
+            if self["manager"].getboolean("force"):
                 shutil.rmtree(self["manager"]["outdir"])
             else:
-                sys.exit()
+                rm_outdir = input("Do you want to delete prior results [y/N]: ")
+                if rm_outdir.lower() in ["y", "yes"]:
+                    shutil.rmtree(self["manager"]["outdir"])
+                else:
+                    sys.exit()
 
         # Create the directory tree for the output
         os.makedirs(self["manager"]["outdir"])

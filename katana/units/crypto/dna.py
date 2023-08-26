@@ -59,7 +59,7 @@ class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
         self.raw_target = self.raw_target.replace(" ", "").replace("U", "T").strip()
 
         if (
-            not all(c in "ACGT" for c in self.raw_target)
+            any(c not in "ACGT" for c in self.raw_target)
             or len(self.raw_target) % 3 != 0
         ):
 
@@ -87,8 +87,7 @@ class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
         for codon in [
             self.raw_target[i : i + 3] for i in range(0, len(self.raw_target), 3)
         ]:
-            index = 0
-            index += (
+            index = 0 + (
                 0
                 if codon[2] == "A"
                 else (1 if codon[2] == "C" else (2 if codon[2] == "G" else 3))

@@ -15,6 +15,7 @@ to do so currently, considering how obscure Pikalang is to begin with.
 """
 
 
+
 from katana.unit import PrintableDataUnit, NotApplicable
 from katana.units.esoteric.brainfuck import evaluate_brainfuck
 
@@ -35,7 +36,7 @@ p_mappings = [
 
 r_mappings = [b".", b",", b"<", b"[", b">", b"]", b"-", b"+"]
 
-regex_finder = "({})".format("|".join([x for x in p_mappings]))
+regex_finder = f'({"|".join(list(p_mappings))})'
 
 
 class Unit(PrintableDataUnit):
@@ -73,11 +74,10 @@ class Unit(PrintableDataUnit):
         :return: None. This function should not return any data.
         """
 
-        # Convert the found pikalang commands to brainfuck
-        new_brainfuck = []
-        for p in self.pika_commands:
-            new_brainfuck.append(r_mappings[p_mappings.index(p.decode("utf-8"))])
-
+        new_brainfuck = [
+            r_mappings[p_mappings.index(p.decode("utf-8"))]
+            for p in self.pika_commands
+        ]
         # Try to run the brainfuck code
         try:
             output = evaluate_brainfuck(new_brainfuck, None)

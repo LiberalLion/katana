@@ -41,12 +41,7 @@ def cleanup(code: bytes) -> bytes:
     :return: Only the bytes of appropriate Cow operators.
     """
 
-    clean_code = []
-    for c in code:
-        if c in b"oOmM":
-            clean_code.append(c)
-
-    return clean_code
+    return [c for c in code if c in b"oOmM"]
 
 
 def build_jumpmap(code: bytes) -> dict:
@@ -120,19 +115,19 @@ def evaluate_cow(code, input_file, timeout=-1):
         # convert the command to bytes
         command = bytes(command)
 
-        if command == b"moO":  # moO-ve memory pointer forward
+        if command == b"mOo":
+            cellptr = 0 if cellptr <= 0 else cellptr - 1
+        elif command == b"moO":
             cellptr += 1
             if cellptr == len(cells):
                 cells.append(0)
 
-        if command == b"mOo":  # mOo-ve memory pointer backward
-            cellptr = 0 if cellptr <= 0 else cellptr - 1
         try:
-            if command == b"MoO":
-                cells[cellptr] = cells[cellptr] + 1 if cells[cellptr] < 255 else 0
-
             if command == b"MOo":
                 cells[cellptr] = cells[cellptr] - 1 if cells[cellptr] > 0 else 255
+
+            elif command == b"MoO":
+                cells[cellptr] = cells[cellptr] + 1 if cells[cellptr] < 255 else 0
 
             if command == b"MOO" and cells[cellptr] == 0:
                 nextptr = jumpmap.get(codeptr, -1)
@@ -144,7 +139,30 @@ def evaluate_cow(code, input_file, timeout=-1):
 
                 codeptr = nextptr
 
-            if command == b"moo":
+            if command == b"MMM":
+                if register is None:
+                    register = cells[cellptr]
+                else:
+                    cells[cellptr] = register
+                    register = None
+
+            elif command == b"Moo":
+                if cells[cellptr] == 0:
+                    # cells[cellptr] = input_file.read(1)
+                    cells[cellptr] = b"\n"
+                else:
+                    output.append(chr(cells[cellptr]))
+
+            elif command == b"OOM":
+                output.append(cells[cellptr])
+
+            elif command == b"OOO":
+                cells[cellptr] = 0
+
+            elif command == b"mOO":
+                codeptr = -codeptr - 3
+
+            elif command == b"moo":
                 nextptr = jumpmap.get(codeptr, -1)
 
                 if nextptr < 0:
@@ -156,33 +174,9 @@ def evaluate_cow(code, input_file, timeout=-1):
 
                 codeptr = nextptr
 
-            if command == b"Moo":
-                if cells[cellptr] == 0:
-                    # cells[cellptr] = input_file.read(1)
-                    cells[cellptr] = b"\n"
-                else:
-                    output.append(chr(cells[cellptr]))
-
-            if command == b"mOO":
-                codeptr = -codeptr - 3
-
-            if command == b"OOO":
-                cells[cellptr] = 0
-
-            if command == b"MMM":
-                if register is None:
-                    register = cells[cellptr]
-                else:
-                    cells[cellptr] = register
-                    register = None
-
-            if command == b"OOM":
-                output.append(cells[cellptr])
-
-            if command == b"oom":
+            elif command == b"oom":
                 # cells[cellptr] = input_file.read(1)
                 cells[cellptr] = b"\n"
-
             if len(command) < 3:
                 return None
 
@@ -192,8 +186,7 @@ def evaluate_cow(code, input_file, timeout=-1):
 
         codeptr += 3
 
-    output = "".join(output)
-    return output
+    return "".join(output)
 
 
 class Unit(BaseUnit):
@@ -237,11 +230,9 @@ class Unit(BaseUnit):
         :return: None. This function should not return any data.
         """
 
-        output = evaluate_cow(
+        if output := evaluate_cow(
             self.target.stream,
             self.get("input_file", default=None),
             self.geti("cow_timeout", default=1),
-        )
-
-        if output:
+        ):
             self.manager.register_data(self, output)

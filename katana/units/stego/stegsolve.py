@@ -36,32 +36,31 @@ def get_plane(img, data, channel: str, index: str = 0):
 
     :return: A new Python PIL image with only the given channel and index.
     """
-    if channel in img.mode:
-        new_image = Image.new("L", img.size)
-        new_image_data = new_image.load()
-
-        # JOHN: I pass in the data now, so it is not loaded every time.
-        img_data = data
-
-        channel_index = img.mode.index(channel)
-        for x in range(img.size[0]):
-            for y in range(img.size[1]):
-                color = img_data[x, y]
-
-                try:
-                    channel = color[channel_index]
-                except TypeError:
-                    channel = color
-
-                plane = bin(channel)[2:].zfill(8)
-                try:
-                    new_color = 255 * int(plane[abs(index - 7)])
-                    new_image_data[x, y] = 255 * int(plane[abs(index - 7)])
-                except IndexError:
-                    pass
-        return new_image
-    else:
+    if channel not in img.mode:
         return
+    new_image = Image.new("L", img.size)
+    new_image_data = new_image.load()
+
+    # JOHN: I pass in the data now, so it is not loaded every time.
+    img_data = data
+
+    channel_index = img.mode.index(channel)
+    for x in range(img.size[0]):
+        for y in range(img.size[1]):
+            color = img_data[x, y]
+
+            try:
+                channel = color[channel_index]
+            except TypeError:
+                channel = color
+
+            plane = bin(channel)[2:].zfill(8)
+            try:
+                new_color = 255 * int(plane[abs(index - 7)])
+                new_image_data[x, y] = 255 * int(plane[abs(index - 7)])
+            except IndexError:
+                pass
+    return new_image
 
 
 class Unit(FileUnit):
@@ -150,7 +149,7 @@ class Unit(FileUnit):
         channels = "".join([c for c in channels if c in "RGBA"])
 
         # By default, select all channels
-        if len(channels) == 0:
+        if not channels:
             channels = "RGBA"
 
         # Yield all plane options
@@ -172,10 +171,7 @@ class Unit(FileUnit):
         # Grab the current case
         channel, plane = case
 
-        # Carve out the needed plane
-        image = get_plane(self.img, self.data, channel, plane)
-
-        if image:
+        if image := get_plane(self.img, self.data, channel, plane):
             # Create the artifact
             output_path, _ = self.generate_artifact(
                 f"channel_{channel}_plane_{plane}.png", create=True

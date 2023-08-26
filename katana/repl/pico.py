@@ -65,11 +65,7 @@ class Provider(CTFProvider):
             return self._api(endpoint, args, params, method, recurse=False)
 
         # Ensure we are good to go
-        if r.status_code != 200:
-            return False, {}, r
-
-        # Return the response
-        return True, r.json(), r
+        return (False, {}, r) if r.status_code != 200 else (True, r.json(), r)
 
     def _authenticate(self, username: str, password: str) -> None:
 
@@ -153,18 +149,9 @@ class Provider(CTFProvider):
     ) -> Dict[int, User]:
 
         # Pico lists the scoreboard around your user by default
-        if localize is not None:
-            params = {}
-        else:
-            params = {"page": 1}
-
-        if bracket is None and localize is not None:
-            # Use this user's bracket
-            bracket = localize.bracket
-        elif bracket is None:
-            # Default to the highest priority bracket
-            bracket = self.brackets[0]
-
+        params = {} if localize is not None else {"page": 1}
+        if bracket is None:
+            bracket = localize.bracket if localize is not None else self.brackets[0]
         # Grab the scoreboard
         success, board, _ = self._api(
             f"/scoreboards/{bracket.ident}/scoreboard", params=params
@@ -192,9 +179,7 @@ class Provider(CTFProvider):
         if end > len(board["scoreboard"]):
             start -= end - len(board["scoreboard"])
             end = len(board["scoreboard"])
-        if start < 0:
-            start = 0
-
+        start = max(start, 0)
         return {
             ((board["current_page"] - 1) * 50 + n + 1): User(
                 t["name"], t["score"], None, t["name"], [], bracket
@@ -205,10 +190,7 @@ class Provider(CTFProvider):
     def get_challenge(self, ident: str) -> Challenge:
 
         success, result, _ = self._api(f"/problems/{ident}")
-        if not success:
-            return None
-
-        return self._parse_challenge(result)
+        return None if not success else self._parse_challenge(result)
 
     def _parse_challenge(self, result) -> Challenge:
         """
@@ -220,10 +202,7 @@ class Provider(CTFProvider):
         file_pattern = re.compile(r"href='(//[^/]+/static/[^']+)'>")
         matches: List[Tuple[str, str]] = file_pattern.findall(result["description"])
 
-        method = "http"
-        if "://" in self.url:
-            method = self.url.split(":")[0]
-
+        method = self.url.split(":")[0] if "://" in self.url else "http"
         files = {}
         if matches is not None:
             files = {match.split("/")[-1]: f"{method}:{match}" for match in matches}
@@ -247,7 +226,4 @@ class Provider(CTFProvider):
             args={"key": flag, "method": "api", "pid": challenge.ident},
             method="POST",
         )
-        if not success:
-            return False, -1
-
-        return result["correct"], -1
+        return (False, -1) if not success else (result["correct"], -1)

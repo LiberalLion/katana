@@ -76,7 +76,5 @@ class Unit(FileUnit):
         :return: None. This function should not return any data.
         """
 
-        ocr_data = attempt_ocr(self.target.path)
-
-        if ocr_data:
+        if ocr_data := attempt_ocr(self.target.path):
             self.manager.register_data(self, ocr_data)

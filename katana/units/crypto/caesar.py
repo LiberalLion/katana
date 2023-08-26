@@ -30,9 +30,7 @@ def shift_char(c: str, shift: int, alphabet: str) -> str:
     amount within the given alphabet.
     """
     idx = alphabet.find(c)
-    if idx == -1:
-        return None
-    return alphabet[(idx + shift) % len(alphabet)]
+    return None if idx == -1 else alphabet[(idx + shift) % len(alphabet)]
 
 
 class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
@@ -75,8 +73,7 @@ class Unit(NotEnglishAndPrintableUnit, CryptoUnit):
 
         # We either guess all, or a specific shift depending on config
         if self.geti("shift", None) is None:
-            for shift in range(1, len(string.ascii_lowercase)):
-                yield shift
+            yield from range(1, len(string.ascii_lowercase))
         else:
             yield self.geti("shift")
 

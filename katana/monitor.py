@@ -261,13 +261,12 @@ class JsonMonitor(Monitor):
             # Save the artifact name
             result["exceptions"].append(str(exception[1]))
 
-        if target is not None:
-            if repr(target) not in results["children"]:
-                return {}
-            else:
-                return results["children"][repr(target)]
-        else:
+        if target is None:
             return results["children"]
+        if repr(target) not in results["children"]:
+            return {}
+        else:
+            return results["children"][repr(target)]
 
     def on_completion(self, manager: katana.manager.Manager, timed_out: bool) -> None:
         super(JsonMonitor, self).on_completion(manager, timed_out)

@@ -84,15 +84,14 @@ class Unit(RegexUnit, CryptoUnit):
 
         token = b""
         for c in number:
-            if (token + bytes([c])) not in t9_mappings:
-                if token in t9_mappings:
-                    result.append(t9_mappings[token])
-                    token = bytes([c])
-                else:
-                    token += bytes([c])
-            else:
+            if token + bytes([c]) in t9_mappings:
                 token += bytes([c])
 
+            elif token in t9_mappings:
+                result.append(t9_mappings[token])
+                token = bytes([c])
+            else:
+                token += bytes([c])
         if token in t9_mappings:
             result.append(t9_mappings[token])
 
@@ -103,10 +102,7 @@ class Unit(RegexUnit, CryptoUnit):
         # Grab the groups and split them on whitespace
         matches = match.group().split()
 
-        result = []
-        for m in matches:
-            result.append(self.decode_one(m))
-
+        result = [self.decode_one(m) for m in matches]
         # Register with and without spaces separating
         self.manager.register_data(self, b"".join(result))
         self.manager.register_data(self, b" ".join(result))

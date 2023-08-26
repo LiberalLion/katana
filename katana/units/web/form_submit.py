@@ -79,8 +79,7 @@ class Unit(web.WebUnit):
         """
 
         if self.action and self.method:
-            if self.action:
-                action = self.action[0].decode("utf-8")
+            action = self.action[0].decode("utf-8")
             if self.method:
                 method = self.method[0].decode("utf-8")
             try:

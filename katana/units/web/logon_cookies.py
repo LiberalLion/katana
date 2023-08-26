@@ -88,47 +88,50 @@ class Unit(WebUnit):
         """
 
         # If we find this actions, decode them to values we can use
-        if self.action and self.method and self.username and self.password:
-            if self.action:
-                action = self.action[0].decode("utf-8")
-            if self.method:
-                method = self.method[0].decode("utf-8")
-            if self.username:
-                username = self.username[0].decode("utf-8")
-            if self.password:
-                password = self.password[0].decode("utf-8")
+        if (
+            not self.action
+            or not self.method
+            or not self.username
+            or not self.password
+        ):
+            return
+        action = self.action[0].decode("utf-8")
+        if self.method:
+            method = self.method[0].decode("utf-8")
+        if self.username:
+            username = self.username[0].decode("utf-8")
+        if self.password:
+            password = self.password[0].decode("utf-8")
 
-            s = requests.Session()
+        s = requests.Session()
 
-            # Attempt a default login
-            try:
-                r = s.request(
-                    method.lower(),
-                    self.target.url_root.rstrip("/") + "/" + action,
-                    data={username: "guest", password: "guest"},
-                )
-            except:
-                # JOHN: Theoretically, if we find a valid method,
-                #  this should not error... But if it does, ... give up??
-                return
+        # Attempt a default login
+        try:
+            r = s.request(
+                method.lower(),
+                self.target.url_root.rstrip("/") + "/" + action,
+                data={username: "guest", password: "guest"},
+            )
+        except:
+            # JOHN: Theoretically, if we find a valid method,
+            #  this should not error... But if it does, ... give up??
+            return
 
             # Check out the cookies. Flip them if boolean, and look for flags.
-            if s.cookies:
-                for admin_cookie in web.potential_cookie_names:
-                    if admin_cookie in s.cookies.keys():
-                        if s.cookies[admin_cookie] == "False":
-                            s.cookies.update({admin_cookie: "True"})
-                            new = requests.get(r.url, cookies={admin_cookie: "True"})
+        if s.cookies:
+            for admin_cookie in web.potential_cookie_names:
+                if admin_cookie in s.cookies.keys():
+                    if s.cookies[admin_cookie] == "False":
+                        s.cookies.update({admin_cookie: "True"})
+                        new = requests.get(r.url, cookies={admin_cookie: "True"})
 
-                            if self.manager.find_flag(self, new.text):
-                                break
-                        else:
-                            s.cookies.update({admin_cookie: "1"})
-                            new = requests.get(r.url, cookies={admin_cookie: "1"})
-                            if self.manager.find_flag(self, new.text):
-                                break
-            else:
-                s.cookies.update({"admin": "1"})
-                new = s.get(r.url, cookies={"admin": "1"})
-                if self.manager.find_flag(self, new.text):
-                    return
+                    else:
+                        s.cookies.update({admin_cookie: "1"})
+                        new = requests.get(r.url, cookies={admin_cookie: "1"})
+                    if self.manager.find_flag(self, new.text):
+                        break
+        else:
+            s.cookies.update({"admin": "1"})
+            new = s.get(r.url, cookies={"admin": "1"})
+            if self.manager.find_flag(self, new.text):
+                return

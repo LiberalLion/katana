@@ -92,7 +92,7 @@ class ReplMonitor(JsonMonitor):
     def on_flag(self, manager: Manager, unit: Unit, flag: str):
 
         # Ignore duplicate flags
-        if len([f for f in self.flags if f[1] == flag]) > 0:
+        if [f for f in self.flags if f[1] == flag]:
             return
 
         super(ReplMonitor, self).on_flag(manager, unit, flag)
@@ -155,10 +155,9 @@ class ReplMonitor(JsonMonitor):
 
             if u in self.repl.ctf_targets:
                 with self.repl.terminal_lock:
-                    result = self.repl.ctf_provider.submit(
+                    if result := self.repl.ctf_provider.submit(
                         self.repl.ctf_targets[u][0], flag
-                    )
-                    if result:
+                    ):
                         log_entry += (
                             f"\n\n[{Fore.GREEN}+{Style.RESET_ALL}] ctf: "
                             f"{Fore.GREEN}correct{Style.RESET_ALL} flag for challenge {self.repl.ctf_targets[u][0].title}\n"
@@ -223,28 +222,29 @@ class ReplMonitor(JsonMonitor):
         self, manager: katana.manager.Manager, unit: katana.unit.Unit, path: str = None
     ) -> None:
 
-        if manager["manager"]["imagegui"] == "yes":
-            # If this artifact is an image, determine the hash to check if we have
-            # seen this image before.
-            if " image " in magic.from_file(path):
-                md5hash = md5sum(path).hexdigest()
+        if manager["manager"]["imagegui"] != "yes":
+            return
+        # If this artifact is an image, determine the hash to check if we have
+        # seen this image before.
+        if " image " in magic.from_file(path):
+            md5hash = md5sum(path).hexdigest()
 
-                # If we have not seen the image before, display it and add it
-                # to our records.
-                if md5hash not in self.images:
-                    self.images.append(md5hash)
+            # If we have not seen the image before, display it and add it
+            # to our records.
+            if md5hash not in self.images:
+                self.images.append(md5hash)
 
-                    # Resize the image (in case it is huge)
-                    try:
-                        img = Image.open(path)
-                        basewidth = 600
-                        wpercent = basewidth / float(img.size[0])
-                        hsize = int((float(img.size[1]) * float(wpercent)))
-                        img = img.resize((basewidth, hsize), Image.ANTIALIAS)
-                        img.show()
-                    except:
-                        # If we can't seem to open the image, just ignore it.
-                        pass
+                # Resize the image (in case it is huge)
+                try:
+                    img = Image.open(path)
+                    basewidth = 600
+                    wpercent = basewidth / float(img.size[0])
+                    hsize = int((float(img.size[1]) * float(wpercent)))
+                    img = img.resize((basewidth, hsize), Image.ANTIALIAS)
+                    img.show()
+                except:
+                    # If we can't seem to open the image, just ignore it.
+                    pass
 
 
 def get_target_choices(repl, uncomplete=False) -> List[CompletionItem]:
@@ -263,12 +263,10 @@ def get_target_choices(repl, uncomplete=False) -> List[CompletionItem]:
     if uncomplete:
         targets = [t for t in targets if not t.completed]
 
-    result = [
+    return [
         CompletionItem(t.hash.hexdigest(), katana.util.ellipsize(repr(t), 40))
         for t in targets
     ]
-
-    return result
 
 
 def get_monitor_choices(repl: "katana.repl.Repl") -> List[CompletionItem]:
@@ -279,7 +277,7 @@ def get_monitor_choices(repl: "katana.repl.Repl") -> List[CompletionItem]:
     :return: List of completion objects referring to monitored directories
     """
 
-    return [d for d in repl.directories]
+    return list(repl.directories)
 
 
 def get_challenge_choices(repl: "katana.repl.Repl") -> List[CompletionItem]:
@@ -391,23 +389,11 @@ class Repl(cmd2.Cmd):
 
         downloads = self.manager.active_downloads
         if len(downloads):
-            partials = [
-                " ",
-                "\u258F",
-                "\u258E",
-                "\u258D",
-                "\u258C",
-                "\u258B",
-                "\u258A",
-                "\u2589",
-            ]
-            if any([True for d in downloads if d.size == -1]):
+            if any(True for d in downloads if d.size == -1):
                 percentage = "??"
             else:
-                percentage = sum([d.trans for d in downloads]) / sum(
-                    [d.size for d in downloads]
-                )
-            speed = sum([d.speed for d in downloads]) / len(downloads)
+                percentage = sum(d.trans for d in downloads) / sum(d.size for d in downloads)
+            speed = sum(d.speed for d in downloads) / len(downloads)
             if speed < 1024:
                 unit = "B/s"
             elif speed < (1024 ** 2):
@@ -421,10 +407,17 @@ class Repl(cmd2.Cmd):
                 speed /= float(1024 ** 3)
             if percentage != "??":
                 percent_scaled = int(percentage * (10 * 8))
-                progress = (
-                    "\u2588" * int(percent_scaled / 8)
-                    + partials[int(percent_scaled % 8)]
-                )
+                partials = [
+                    " ",
+                    "\u258F",
+                    "\u258E",
+                    "\u258D",
+                    "\u258C",
+                    "\u258B",
+                    "\u258A",
+                    "\u2589",
+                ]
+                progress = "\u2588" * (percent_scaled // 8) + partials[int(percent_scaled % 8)]
                 download_state = f"[{progress.ljust(10, ' ')}] {speed:.2f}{unit} - "
             else:
                 download_state = (
@@ -433,14 +426,7 @@ class Repl(cmd2.Cmd):
         else:
             download_state = ""
 
-        # update the prompt
-        prompt = (
-            f"{Fore.CYAN}katana{Style.RESET_ALL} - {state} - {download_state}"
-            f"{Fore.BLUE}{self.manager.work.qsize()} units queued{Style.RESET_ALL} "
-            f"\n{Fore.GREEN}➜ {Style.RESET_ALL}"
-        )
-
-        return prompt
+        return f"{Fore.CYAN}katana{Style.RESET_ALL} - {state} - {download_state}{Fore.BLUE}{self.manager.work.qsize()} units queued{Style.RESET_ALL} \n{Fore.GREEN}➜ {Style.RESET_ALL}"
 
     def update_prompt(self):
         """ Updates the prompt with the current state """
@@ -665,15 +651,12 @@ class Repl(cmd2.Cmd):
                 self.observer.unschedule(handle)
 
         elif args.action == "list":
-            # List all monitored directories
-            output = ""
-            for path, handle in self.directories.items():
-                if handle.is_recursive:
-                    output += f"\n{handle.path} - {Fore.CYAN}recursive{Style.RESET_ALL}"
-                else:
-                    output += (
-                        f"\n{handle.path} - {Fore.BLUE}non-recursive{Style.RESET_ALL}"
-                    )
+            output = "".join(
+                f"\n{handle.path} - {Fore.CYAN}recursive{Style.RESET_ALL}"
+                if handle.is_recursive
+                else f"\n{handle.path} - {Fore.BLUE}non-recursive{Style.RESET_ALL}"
+                for path, handle in self.directories.items()
+            )
             self.poutput(output[1:])
 
         # Don't exit
@@ -1025,7 +1008,7 @@ class Repl(cmd2.Cmd):
         ]
 
         # Ensure we found at least one target
-        if len(flags) == 0:
+        if not flags:
             self.perror(f"[{Fore.RED}-{Style.RESET_ALL}] {args.target}: no flags found")
             return
         elif len(flags) > 1:
@@ -1098,9 +1081,9 @@ class Repl(cmd2.Cmd):
     @cmd2.with_argparser(set_parser)
     def do_set(self, args: argparse.Namespace):
         """ Set a runtime parameter """
-        pattern = r"([a-zA-Z_\-0-9]*)\[([a-zA-Z_\-0-9]*)\]"
-
         if args.parameter is not None:
+            pattern = r"([a-zA-Z_\-0-9]*)\[([a-zA-Z_\-0-9]*)\]"
+
             # Check if we are specifying section[parameter]
             match = re.match(pattern, args.parameter)
             if match is not None:
@@ -1136,7 +1119,7 @@ class Repl(cmd2.Cmd):
                 }
 
                 # Don't print empty configurations
-                if len(values) == 0:
+                if not values:
                     continue
 
                 # Print section header
@@ -1322,10 +1305,10 @@ class Repl(cmd2.Cmd):
         # Grab challenges
         challenges: List[Challenge] = list(self.ctf_provider.challenges)
 
-        max_value = max([c.value for c in challenges])
+        max_value = max(c.value for c in challenges)
         value_width = len(str(max_value))
-        id_width = max([len(c.ident) for c in challenges]) + 2
-        title_width = max([len(c.title) for c in challenges]) + 2
+        id_width = max(len(c.ident) for c in challenges) + 2
+        title_width = max(len(c.title) for c in challenges) + 2
 
         # Header line
         output = [
@@ -1516,7 +1499,7 @@ class Repl(cmd2.Cmd):
             )
             targets.append(self.ctf_targets[key][1])
 
-        if len(targets) == 0:
+        if not targets:
             self.poutput(f"[{Fore.YELLOW}!{Fore.RESET}] no targets found")
             return
 
@@ -1526,7 +1509,7 @@ class Repl(cmd2.Cmd):
                 f"[{Fore.GREEN}+{Fore.RESET}] waiting for target(s) completion..."
             )
             try:
-                while not all([t.completed for t in targets]):
+                while not all(t.completed for t in targets):
                     time.sleep(0.2)
             except KeyboardInterrupt:
                 self.poutput(f"[{Fore.YELLOW}!{Fore.RESET}] cancelling target(s)...")
@@ -1568,12 +1551,13 @@ class Repl(cmd2.Cmd):
         if len(brackets) == 0:
             return
 
-        bracket_width = max([len(bracket.name) for bracket in brackets]) + 2
+        bracket_width = max(len(bracket.name) for bracket in brackets) + 2
 
         output = [f" {Style.BRIGHT}{'Bracket':<{bracket_width}}ID{Style.RESET_ALL}"]
-        for bracket in brackets:
-            output.append(f" {bracket.name:<{bracket_width}}{bracket.ident}")
-
+        output.extend(
+            f" {bracket.name:<{bracket_width}}{bracket.ident}"
+            for bracket in brackets
+        )
         self.ppaged("\n".join(output))
 
     # `ctf scoreboard`
@@ -1611,7 +1595,7 @@ class Repl(cmd2.Cmd):
                 bracket = [
                     b for b in self.ctf_provider.brackets if b.name == args.bracket
                 ]
-                if len(bracket) == 0:
+                if not bracket:
                     self.perror(
                         f"[{Fore.RED}-{Style.RESET_ALL} ctf: invalid bracket: {args.bracket}"
                     )
@@ -1629,8 +1613,8 @@ class Repl(cmd2.Cmd):
             return
 
         # Get width of user column
-        user_width = max([len(x.team) for p, x in scoreboard.items()]) + 2
-        pos_width = max([len(str(i)) for i in scoreboard]) + 2
+        user_width = max(len(x.team) for p, x in scoreboard.items()) + 2
+        pos_width = max(len(str(i)) for i in scoreboard) + 2
 
         # Build the table
         output = [
@@ -1642,9 +1626,7 @@ class Repl(cmd2.Cmd):
             else:
                 color = Style.DIM
             output.append(
-                f"{str(pos)+'.':<{pos_width}}"
-                f"{color}{user.name:<{user_width}}{Style.RESET_ALL}"
-                f"{user.score}"
+                f"{f'{str(pos)}.':<{pos_width}}{color}{user.name:<{user_width}}{Style.RESET_ALL}{user.score}"
             )
         output = "\n".join(output)
 
@@ -1687,7 +1669,7 @@ class Repl(cmd2.Cmd):
         challenges: List[Challenge] = list(self.ctf_provider.challenges)
 
         # Get the maximum value for challenges
-        max_value = max([c.value for c in challenges])
+        max_value = max(c.value for c in challenges)
 
         description = " " + "\n ".join(
             textwrap.wrap(challenge.description, 79, break_long_words=False)
@@ -1702,13 +1684,7 @@ class Repl(cmd2.Cmd):
         else:
             value_color = Fore.GREEN
 
-        output = (
-            f"{Fore.MAGENTA}{challenge.title}{Style.RESET_ALL} - "
-            f"{value_color}{challenge.value} points{Style.RESET_ALL} - "
-            f"{Fore.RED+'not ' if not challenge.solved else Fore.GREEN}solved{Style.RESET_ALL}\n"
-            f"\n"
-            f"{description}"
-        )
+        output = f"{Fore.MAGENTA}{challenge.title}{Style.RESET_ALL} - {value_color}{challenge.value} points{Style.RESET_ALL} - {f'{Fore.RED}not ' if not challenge.solved else Fore.GREEN}solved{Style.RESET_ALL}\n\n{description}"
 
         flags = []
 
@@ -1788,7 +1764,7 @@ class Repl(cmd2.Cmd):
                 else:
                     color = ""
                 board_output.append(
-                    f"{str(pos)+'.':<5}{color}{user.name:<20}{Style.RESET_ALL}"
+                    f"{f'{str(pos)}.':<5}{color}{user.name:<20}{Style.RESET_ALL}"
                 )
             output += "\n".join(board_output) + "\n"
 

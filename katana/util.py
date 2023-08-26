@@ -11,11 +11,7 @@ def isprintable(data) -> bool:
 
     if type(data) is str:
         data = data.encode("utf-8")
-    for c in data:
-        if c not in bytes(string.printable, "ascii"):
-            return False
-
-    return True
+    return all(c in bytes(string.printable, "ascii") for c in data)
 
 
 def is_good_magic(magic: str) -> bool:
@@ -49,7 +45,7 @@ def ellipsize(data: str, length: int = 64) -> str:
         data = repr(data)[2:-1]
     data = data.split("\n")[0]
     if len(data) > (length - 3):
-        data = data[: length - 3] + "..."
+        data = f"{data[:length - 3]}..."
     return data
 
 

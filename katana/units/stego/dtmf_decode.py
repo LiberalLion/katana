@@ -60,13 +60,6 @@ class DTMFdetector(object):
         i = 0
         msg = "none"
 
-        row_col_ascii_codes = [
-            ["1", "2", "3", "A"],
-            ["4", "5", "6", "B"],
-            ["7", "8", "9", "C"],
-            ["*", "0", "#", "D"],
-        ]
-
         for i in range(4):
             if self.r[i] > maxval:
                 maxval = self.r[i]
@@ -79,21 +72,19 @@ class DTMFdetector(object):
                 maxval = self.r[i]
                 col = i
 
-        if self.r[row] < 4.0e5:
-            msg = "energy not enough"
-        elif self.r[col] < 4.0e5:
+        if self.r[row] < 4.0e5 or self.r[col] < 4.0e5:
             msg = "energy not enough"
         else:
             see_digit = True
 
             if self.r[col] > self.r[row]:
                 max_index = col
-                if self.r[row] < (self.r[col] * 0.398):
+                if self.r[row] < self.r[max_index] * 0.398:
                     see_digit = False
 
             else:
                 max_index = row
-                if self.r[col] < (self.r[row] * 0.158):
+                if self.r[col] < self.r[max_index] * 0.158:
                     see_digit = False
 
             if self.r[max_index] > 1.0e9:
@@ -101,15 +92,18 @@ class DTMFdetector(object):
             else:
                 t = self.r[max_index] * 0.010
 
-            peak_count = 0
-
-            for i in range(8):
-                if self.r[i] > t:
-                    peak_count += 1
+            peak_count = sum(1 for i in range(8) if self.r[i] > t)
             if peak_count > 2:
                 see_digit = False
 
             if see_digit:
+                row_col_ascii_codes = [
+                    ["1", "2", "3", "A"],
+                    ["4", "5", "6", "B"],
+                    ["7", "8", "9", "C"],
+                    ["*", "0", "#", "D"],
+                ]
+
                 self.characters.append(
                     (
                         row_col_ascii_codes[row][col - 4],

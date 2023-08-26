@@ -13,6 +13,6 @@ class TestUrldecode(KatanaTest):
         units=urldecode
         auto=yes
         """,
-            target="".join(["%" + hex(ord(c))[2:] for c in flag]),
+            target="".join([f"%{hex(ord(c))[2:]}" for c in flag]),
             correct_flag=flag,
         )

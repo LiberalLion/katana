@@ -90,8 +90,7 @@ class Unit(web.WebUnit):
 
         # Extract the found values
         if self.action and self.method and self.username and self.password:
-            if self.action:
-                action = self.action[0].decode("utf-8")
+            action = self.action[0].decode("utf-8")
             if self.method:
                 method = self.method[0].decode("utf-8")
             if self.username:
@@ -132,11 +131,7 @@ class Unit(web.WebUnit):
             # We can't reach the site... stop trying this unit!
             return
 
-        # Hunt for flags. If we found one, stop all other requests!
-        hit = self.manager.find_flag(self, r.text)
-
-        # If we found a flag, stop trying SQL injection!!
-        if hit:
+        if hit := self.manager.find_flag(self, r.text):
             return
 
         # You should ONLY return what is "interesting"

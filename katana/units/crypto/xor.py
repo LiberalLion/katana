@@ -90,13 +90,7 @@ class Unit(CryptoUnit):
         # Get the value passed
         xor_key = self.get("key")
 
-        if xor_key:
-            # if a value was actually passed, use it in a loop
-            xor_key = [xor_key]
-        else:
-            # if a value is not supplied, bruteforce in the single-byte range
-            xor_key = range(1, 255)
-
+        xor_key = [xor_key] if xor_key else range(1, 255)
         for each_key in xor_key:
             try:
                 result = xor(self.target.raw, each_key).decode("latin-1")

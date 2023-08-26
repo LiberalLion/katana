@@ -3,9 +3,7 @@ from tests import KatanaTest
 
 
 def shift(data: bytes, n: int, start: int = 0, end: int = 256):
-    result = []
-    for c in data:
-        result.append(((c + n - start) % (end - start)) + start)
+    result = [((c + n - start) % (end - start)) + start for c in data]
     print(result)
     return bytes(result)
 

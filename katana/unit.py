@@ -182,12 +182,7 @@ class Unit(object):
         if unit_class.get_name() in self.BLOCKED_GROUPS:
             return False
 
-        # Check that we haven't blocked this group
-        for group in self.BLOCKED_GROUPS:
-            if group in unit_class.GROUPS:
-                return False
-
-        return True
+        return all(group not in unit_class.GROUPS for group in self.BLOCKED_GROUPS)
 
     def is_complete(self) -> bool:
         """ Returns true if either this unit or the origin target has completed """
@@ -589,5 +584,4 @@ class RegexUnit(Unit):
         yield self.first_match
 
         # Yield all the other matches
-        for match in self.match_iter:
-            yield match
+        yield from self.match_iter

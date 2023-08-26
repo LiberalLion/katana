@@ -147,8 +147,6 @@ class Target(object):
 
             # Assume initially that it is not a file on this system
             is_sub_target = True
-            is_sub_results = True
-
             # Grab the full path to the output/artifacts directory
             results_path = os.path.realpath(self.config["manager"]["outdir"])
 
@@ -168,10 +166,9 @@ class Target(object):
 
             self.upstream = os.path.realpath(self.upstream)
 
-            # Is this a sub-directory of the base results/output directory?
-            if not self.upstream.startswith(bytes(results_path + "/", "utf-8")):
-                is_sub_results = False
-
+            is_sub_results = bool(
+                self.upstream.startswith(bytes(f"{results_path}/", "utf-8"))
+            )
             # We only analyze things as files if they are either
             # sub-directories/files of the original target or of the results
             # directory itself
@@ -410,47 +407,42 @@ class Target(object):
     @property
     def web_protocol(self) -> str:
         """ if this is a URL, return the protocol """
-        if self.is_url:
-            val = self.url_pieces.groupdict()["protocol"]
-            return val.decode() if isinstance(val, bytes) else val
-        else:
+        if not self.is_url:
             return None
+        val = self.url_pieces.groupdict()["protocol"]
+        return val.decode() if isinstance(val, bytes) else val
 
     @property
     def web_host(self) -> str:
         """ if this is a URL, return the hostname """
-        if self.is_url:
-            val = self.url_pieces.groupdict()["host"]
-            return val.decode("utf-8") if isinstance(val, bytes) else val
-        else:
+        if not self.is_url:
             return None
+        val = self.url_pieces.groupdict()["host"]
+        return val.decode("utf-8") if isinstance(val, bytes) else val
 
     @property
     def web_port(self) -> str:
         """ if this is a URL, return the port number """
-        if self.is_url:
-            val = self.url_pieces.groupdict()["port"]
-            return val.decode("utf-8") if isinstance(val, bytes) else val
-        else:
+        if not self.is_url:
             return None
+        val = self.url_pieces.groupdict()["port"]
+        return val.decode("utf-8") if isinstance(val, bytes) else val
 
     @property
     def web_uri(self) -> str:
         """ if this is a url, return the URI """
-        if self.is_url:
-            val = self.url_pieces.groupdict()["uri"]
-            return val.decode("utf-8") if isinstance(val, bytes) else val
-        else:
+        if not self.is_url:
             return None
+        val = self.url_pieces.groupdict()["uri"]
+        return val.decode("utf-8") if isinstance(val, bytes) else val
 
     @property
     def web_query(self) -> str:
         """ if this is a url, return the query string """
-        if self.is_url:
-            val = self.url_pieces.groupdict()["query"]
-            return val.decode("utf-8") if isinstance(val, bytes) else val
-        else:
+        if not self.is_url:
             return None
+        val = self.url_pieces.groupdict()["query"]
+        return val.decode("utf-8") if isinstance(val, bytes) else val
 
     @property
     def website_root(self) -> str:

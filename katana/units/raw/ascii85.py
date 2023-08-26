@@ -82,7 +82,7 @@ class Unit(BaseUnit):
                     # Register the artifact with the manager
                     self.manager.register_artifact(self, filename)
 
-        except (UnicodeDecodeError, binascii.Error, ValueError):
+        except (binascii.Error, ValueError):
             # This won't decode right... must not be right! Ignore it.
             # I return here because we are only trying to decode ONE string
             return
